@@ -1,0 +1,62 @@
+Action Parameter Value
+
+resample resampleOff 1
+resample resamplingFrequency 512
+resample lowPassFrequency 0
+
+detrend detrendChannels 1:size(signal.data,1)
+detrend detrendType highpass
+detrend detrendCutoff 1
+detrend detrendStepSize 0.02
+
+linenoise lineNoiseMethod clean
+linenoise lineNoiseChannels 1:size(signal.data,1)
+linenoise Fs signal.srate
+linenoise lineFrequencies {50,100}
+linenoise p 0.01
+linenoise fScanBandWidth 2
+linenoise taperBandWidth 2
+linenoise taperWindowSize 4
+linenoise taperWindowStep 1
+linenoise tau 100
+linenoise pad 0
+linenoise fPassBand [0,signal.srate/2]
+linenoise maximumIterations 10
+
+cleancriteria FlatlineCriterion 5
+cleancriteria ChannelCriterion 0.87
+cleancriteria LineNoiseCriterion 4
+cleancriteria Highpass {0.25,0.75}
+cleancriteria BurstCriterion 20
+cleancriteria WindowCriterion 0.25
+cleancriteria BurstRejection on
+cleancriteria Distance Euclidean
+cleancriteria WindowCriterionTolerances {-Inf,7}
+cleancriteria fusechanrej 1 
+
+reference type average
+reference refchannels {65,66}
+reference exclude bads
+
+interpolation doInterp 1
+interpolation type spherical
+interpolation when post-ica
+
+report reportingLevel verbose
+
+postprocess filter_highpass 1
+postprocess filter_highpass_cutoff 0.1
+postprocess filter_lowpass 0
+postprocess filter_lowpass_cutoff 60
+postprocess rejContinuous 0
+postprocess doICA 1
+postprocess icaType infomax
+
+channels scalpChannelNumber 64
+channels exgChannelNumber 8
+channels auxChannels []
+channels noChannel []
+
+
+
+
