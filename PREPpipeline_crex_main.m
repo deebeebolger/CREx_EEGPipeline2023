@@ -7,7 +7,6 @@
 % Front. Neuroinform. 9:16. doi: 10.3389/fninf.2015.0001
 %****************************************************************************************************************
 
-
 %% Select all the data files that you wish to process.
 [filename, filepath] = uigetfile('*.bdf', 'Choose a BDF data file ', 'multiselect', 'on');
 [parentdir, childdir, ext] = fileparts(filepath);
@@ -146,6 +145,7 @@ for fcount = 1:length(string(filename))
 
     %% Apply the clean_rawdata plugin to detect bad electrodes. This requires computing the reference before-hand.
     OldEEG = EEG;
+    chansPreclean = OldEEG.chanlocs;
 
     EEG = pop_clean_rawdata( EEG,'FlatlineCriterion',5,'ChannelCriterion',0.87, 'LineNoiseCriterion',4,'Highpass',[0.25 0.75] ,'BurstCriterion',20, ...
         'WindowCriterion',0.25,'BurstRejection','on','Distance','Euclidian', 'WindowCriterionTolerances',[-Inf 7] ,'fusechanrej',1);
@@ -168,60 +168,120 @@ for fcount = 1:length(string(filename))
     %% Recompute the average reference, interpolaing the bad electrode and removing them.
 
     norefindx1 = find(~ismember({EEG.chanlocs.type}, 'EEG'));   % Only include the scalp elements in the
-    EEG = pop_reref(EEG, [], 'exclude', norefindx1);                    % do not interpolate here. Interpolate after ICA rejection.
+    EEG = pop_reref(EEG, [], 'exclude', norefindx1);                     % do not interpolate here. Interpolate after ICA rejection.
 
     saveFname_ref2 = strcat(saveFname_clean,'-reref');
     EEG                      = pop_saveset( EEG, 'filename',saveFname_ref2, 'filepath',savepath);
 
-    %% Carry out filtering: detrend and low-pass.
-    %    Need to create two versions of the data:
-    %    - One version that is highpass filtered at 0.1Hz; the version that
-    %    will be used for ERP analysis.
-    %   - A second version that is highpass filtered at 1Hz, the version that
-    %   will be used for ICA.
-    global EEG_filt_lp;
+    %% Carry out filtering: high-pass (if defined).
+    %    The data set will be highpass filtered at 1Hz to facilitate ICA.
+    %    This yields 2 versions of the dataset: one highpass filtered at
+    %    1Hz (for ICA) and one highpass filtered at 0.25Hz (for ERP analysis).
 
-    if str2double(postprocessParams.filter_highpass) == 1
-        EEG = pop_eegfiltnew(EEG, str2double(postprocessParams.filter_highpass_cutoff), []);   % This applies the default eeglab filter based on windowed-sinc filter with a hamming window applied. Version for ERP analysis.
-        EEG_filt_hp  = pop_eegfiltnew(EEG, 1, []);                % Version that will be used for ICA.
-    else
-        fprintf('No highpass filtering \n')
+    if isempty(UserParam.cleancriteria.Highpass)
+        fprtintf('Data was not high-pass filtered during data cleaning.\n Carry out high-pass filtering.\n');
+        EEG = pop_eegfiltnew(EEG, str2double(postprocessParams.filter_highpass_cutoff), []);
+
+        EEG.etc.postprocess.detrend.method  = 'high-pass';
+        EEG.etc.postprocess.detrend_type      = 'Hamming windowed sinc FIR filter';
+        EEG.etc.postprocess.detrend_cutoff    = str2double(UserParam.postprocess.filter_highpass_cutoff);
+
+        saveFname_filterHP = strcat(saveFname_ref2,'-filterHP');
+        EEG = pop_saveset( EEG, 'filename',saveFname_filterHP, 'filepath',savepath);
+
+    elseif ~isempty(UserParam.cleancriteria.Highpass)
+        fprintf('Data already highpass filtered during data cleaning.\n')
+        hpcut = str2double(UserParam.cleancriteria.Highpass);              % Fetch highpass cutoff applied during data cleaning.
+
+        EEG.etc.postprocess.detrend.method  = 'high-pass applied during data cleaning';
+        EEG.etc.postprocess.detrend_type      = 'Hamming windowed sinc FIR filter';
+        EEG.etc.postprocess.detrend_cutoff    = hpcut(1);
     end
 
-    EEG.etc.postprocess.detrend.method  = 'high-pass';
-    EEG.etc.postprocess.detrend_type      = 'Hamming windowed sinc FIR filter';
-    EEG.etc.postprocess.detrend_cutoff    = 1;
+    EEG_filterHP  = pop_eegfiltnew(EEG, 1, []);   % Apply agressive highpass filtering at 1Hz to facilitate ICA.
 
-    EEG_filt_hp.etc.postprocess.detrend.method = 'high-pass';
-    EEG_filt_hp.etc.postprocess.detrend_type     = 'Hamming windowed sinc FIR filter';
-    EEG_filt_hp.etc.postprocess.detrend_cutoff   = 1;
+    %% Carry out filtering: lowpass (if defined)
 
-    if str2double(postprocessParams.filter_lowpass) == 1
+    if str2double(UserParam.postprocess.filter_lowpass) == 1
         EEG           =  pop_eegfiltnew(EEG, [], str2double(postprocessParams.filter_lowpass_cutoff));
-        EEG_filt_lp =  pop_eegfiltnew(EEG_filt_hp, [], str2double(postprocessParams.filter_lowpass_cutoff));
+        EEG_filterLP =  pop_eegfiltnew(EEG_filterHO, [], str2double(UserParam.postprocess.filter_lowpass_cutoff));
+
+        EEG.etc.postprocess.LPfilter                = 'Low pass';
+        EEG.etc.postprocess.LPfilter_type       = 'Hamming windowed sinc FIR filter';
+        EEG.etc.postprocess.LPfilter_cutoff     = str2double(UserParam.postprocess.filter_lowpass_cutoff);
+
+        saveFname_filterLP = strcat(saveFname_filterHP,'-filterLP');
+        EEG = pop_saveset( EEG, 'filename',saveFname_filterLP, 'filepath',savepath);
     else
         fprintf('No low pass filter applied. \n');
-        EEG_filt_lp = EEG_filt_hp;
+        EEG_filterLP = EEG_filterHP;
     end
 
-    EEG.etc.postprocess.LPfilter                = 'Low pass';
-    EEG.etc.postprocess.LPfilter_type       = 'Hamming windowed sinc FIR filter';
-    EEG.etc.postprocess.LPfilter_cutoff     = str2double(postprocessParams.filter_lowpass_cutoff);
-    EEG_filt_lp.etc.postprocess.LPfilter                = 'Low pass';
-    EEG_filt_lp.etc.postprocess.LPfilter_type       = 'Hamming windowed sinc FIR filter';
-    EEG_filt_lp.etc.postprocess.LPfilter_cutoff     = str2double(postprocessParams.filter_lowpass_cutoff);
+    %% Run Independent Components Analysis (ICA)
 
-    %%  Add code to save filtered data here.
+    if str2double(UserParam.postprocess.doICA) == 1
 
-    fname = EEG.filename;
-    fname_split = split(fname, '.');
-    saveFname_filt = strcat(fname_split{1,1},'-filtered');
-    EEG.setname = saveFname_filt;
-    EEG = pop_saveset( EEG, 'filename',saveFname_filt, 'filepath',Dirsave);
+        if strcmp(UserParam.reference.type, 'average')
+            fprintf('The average reference reduces the data rank by one leading to rank deficiency. Need to remove one channel before ICA.\n')
+            chans2remove = find(contains({EEG.chanlocs.labels}, 'T'));
+            removeChan = randsample(chans2remove, 1);
+            fprintf('Removing channel %s before ICA to render data full ranked.\n', EEG.chanlocs(removeChan).labels);
 
-    %% Call of function to carry out postprocess steps.
+            EEG_filterLP = pop_select(EEG_filterLP, 'rmchannel',EEG.chanlocs(removeChan).labels);
+            iseeg = find(ismember({EEG_filterLP.chanlocs.type}, 'EEG' ));   % Find the number of scalp channels.
 
-    PREPpipeline_crex_prepost_process(EEG, UserParam.postprocess, savepath);
+        else
+            fprintf('Reference type applied is %s.\nNo need to remove the channels. ', UserParam.reference.type)  % Question here of whether to include the mastoid reference channels in ICA.
+            find(ismember({EEG_filterLP.chanlocs.type}, 'EEG' ));   % Find the number of scalp channels.
+        end
+
+        icaType = UserParam.postprocess.icaType;
+
+        switch icaType
+            case 'infomax'
+                fprintf('Carry out Independent Components Analysis (ICA) by applying the %s algorithm', UserParam.postprocess.icaType)
+                ncomps = iseeg;   % Define the number ICs
+                [weights, sphere] = runica(EEG_filterLP.data(iseeg,:), 'ncomps', ncomps);
+
+                % Copy the IC weigths and sphere information to EEG
+                % dataset.
+                EEG.icaweights = weights;
+                EEG.icasphere  = sphere;
+                EEG.icachansind = iseeg;
+                EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(iseeg,:); % Calculate the ICA activations.
+                EEG.icawinv = inv(weights*sphere);
+
+                saveFname_ICA = strcat(saveFname_filterLP,'-ica');
+                EEG = pop_saveset( EEG, 'filename',saveFname_ICA, 'filepath',savepath);
+
+
+
+                % Use the ICLabel plugin to automatically identify component corresponding to artifacts.
+                [EEG, icOut]   = pop_iclabel(EEG, 'default');
+                icThreshold    = [0 0;0 0; 0.8 1; 0 0; 0 0; 0 0; 0 0];
+
+                EEG = pop_icflag(EEG, icThreshold);
+                ic2Rej = find(EEG.reject.gcompreject);        % Reject component/s
+
+                saveFname_icaRej = strcat(saveFname_ICA,'-icarej');
+                EEG = pop_saveset( EEG, 'filename',saveFname_icaRej, 'filepath',savepath);
+
+            case 'amica'
+                fprintf('Carry out Independent Components Analysis (ICA) by applying the %s algorithm', UserParam.postprocess.icaType)
+                % to be continued...
+
+        end % end of switch.
+
+    end % if doICA loop.
+
+    %% Carry out interpolation: interpolate the bad channels rejected during data cleaning.
+    %    Spherical spline interpolation is applied.
+
+    EEG = pop_interp(EEG, chansPreclean, UserParam.interpolation.type);
+
+    saveFname_ssInterp = strcat(saveFname_icaRej,'-ssinterp');
+    EEG = pop_saveset( EEG, 'filename',saveFname_ssInterp, 'filepath',savepath);
+
 end
 
 
