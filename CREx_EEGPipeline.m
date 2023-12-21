@@ -1,7 +1,7 @@
 function CREx_EEGPipeline()
 
 %% Preprocessing Pipeline for EEG.
-% Date: 06/12/2023
+% Date: 19/12/2023
 % Programmed by: D. Bolger
 %
 % PREP pipeline reference: Bigdely-Shamlo N, Mullen T, Kothe C, Su K-M and Robbins KA (2015)
