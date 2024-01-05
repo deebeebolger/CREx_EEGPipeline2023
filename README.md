@@ -14,7 +14,10 @@ The main script calls the following functions:
 - ```showSpectrum()```PrepPipeline function to plot channel spectra.
 - ```removeLineNoise()```PrepPipeline function that applies the Cleanline algorithm to correct line noise.
 - ```pop_clean_rawdata()```EEGLAB function from the *clean_rawdata* plugin.
-- ```pop_eegfiltnew()```EEGLAB function that applies EEGLAB's default *Hamming windowed sinc FIR* filter. 
+- ```pop_eegfiltnew()```EEGLAB function that applies EEGLAB's default *Hamming windowed sinc FIR* filter.
+- ```runica()```EEGLAB function to carry out ICA by applying the **infomax** algorithm.
+- ```pop_iclabel()```Function from EEGLAB plugin **ICLabel** that automatically identifies artifact-related components.
+- ```pop_epochbin()``` ERPLAB function to segment continuous data with Eventlist. 
 
 The components of the pipeline are summarized in the following workflow diagram.
 
