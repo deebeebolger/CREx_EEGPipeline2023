@@ -21,6 +21,11 @@ opts = detectImportOptions(param_path);
 opts = setvartype(opts, 'Value', 'string');
 PIn = readtable(param_path, opts);          % Load in the parameters in table form.
 
+%% Select the Bin Descriptor File to use when creating the EventLists.
+
+[fileBDF, pathBDF] = uigetfile('*.txt','Select the Bin Descriptor File (.txt) to use when adding EventList.');
+BinDFile_fullpath   = fullpath(pathBDF, fileBDF);
+
 %% Loop through the participant data files.
 
 for fcount = 1:length(string(filename))
@@ -80,9 +85,19 @@ for fcount = 1:length(string(filename))
         fprintf("Channel locations appear to have already been added.\n");
     end
 
-    %% Show the frequency spectrum of current EEG version
+    
 
-    [frefs, pows, BadChans] = showSpectrum(EEG, string({EEG.chanlocs(1:scalpNum).labels}), 1:scalpNum, 1:scalpNum, 'Spectra All Channels (raw)', scalpNum/2);
+    %% Call of function Add_EventList() to add EventList to current EEG structure.
+    %    This function uses the binlister() from ERPLAB which takes in a
+    %    Bin Descriptor File (BDF)...not to be confused with Biosemi Data
+    %    Format. Event codes are added at this point before potential data
+    %    interval rejection, which could upset the structure of the trigger
+    %    coding.
+
+    trigs_forbidden = [];
+    trigs_ignore      = [];
+
+    EEG = Add_EventList(EEG, BinDFile_fullpath, savepath, trigs_forbidden, trigs_ignore);
 
     %% Carry out downsampling if defined.
 
@@ -103,6 +118,11 @@ for fcount = 1:length(string(filename))
     [EEGNew, detrend] = removeTrend(EEG, UserParam);
     EEG.etc.noiseDetection.detrend = detrend;
 
+    %% Show the frequency spectrum of current EEG version
+
+    [frefs, pows, BadChans] = showSpectrum(EEG, string({EEG.chanlocs(1:scalpNum).labels}), 1:scalpNum, 1:scalpNum,...
+        'Channel Spectra before linenoise correction', scalpNum/2);
+
     %% Remove line noise using the Cleanline algorithm.
 
     fprintf('Line noise removal\n');
@@ -115,7 +135,7 @@ for fcount = 1:length(string(filename))
     EEG.data(lineNoise.lineNoiseChannels, :) = EEG.data(lineNoise.lineNoiseChannels, :) - EEGNew.data(lineNoise.lineNoiseChannels, :)...
         + EEGClean.data(lineNoise.lineNoiseChannels, :);
 
-    %% save the clean lined data here.
+    %% Save the clean lined data here.
 
     if ~exist(fullfile(main_dir, 'Processed_data'), 'dir')
         mkdir(fullfile(main_dir, 'Processed_data'))
@@ -128,6 +148,11 @@ for fcount = 1:length(string(filename))
     EEG.setname = saveFname_lnoise;
     savepath      = fullfile(main_dir, 'Processed_data');
     EEG = pop_saveset( EEG, 'filename',saveFname_lnoise, 'filepath',savepath);
+
+     %% Show the frequency spectrum of current EEG version
+
+    [frefs, pows, BadChans] = showSpectrum(EEG, string({EEG.chanlocs(1:scalpNum).labels}), 1:scalpNum, 1:scalpNum,...
+        'Channel Spectra after linenoise correction', scalpNum/2);
 
     %% Compute the average reference before bad electrode detection.
 
