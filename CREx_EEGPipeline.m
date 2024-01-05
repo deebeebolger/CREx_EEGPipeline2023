@@ -313,6 +313,17 @@ for fcount = 1:length(string(filename))
     saveFname_ssInterp = strcat(saveFname_icaRej,'-ssinterp');
     EEG = pop_saveset( EEG, 'filename',saveFname_ssInterp, 'filepath',savepath);
 
+    %% Segment the continuous data.
+
+    poststim = [-1000 800];
+    prestim  = [-200 0];
+    EEG_epoched = pop_epochbin( EEG , poststim,  prestim);
+    namefig = EEG_epoched.setname;
+    pop_plotepoch4erp(EEG_epoched, namefig)
+    
+    save_fname = strcat(EEG_epoched.setname,'_ToneLDT_1st_epoched');
+    EEG = pop_saveset( EEG_epoched, 'filename',save_fname, 'filepath',Dirsave);
+
 end
 
 
