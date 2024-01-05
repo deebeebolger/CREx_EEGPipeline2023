@@ -8,5 +8,5 @@ To run the pipeline: type CREx_EEGPipeline in the command window.
 
 The components of the pipeline are summarized in the following workflow diagram.
 
-![EEG processing pipeline workflow](CREx_EEGPipeline2023/Pipeline_figure.png "EEG Processing workflow diagram.")
+![EEG processing pipeline workflow](Pipeline_figure.png "EEG Processing workflow diagram.")
 
