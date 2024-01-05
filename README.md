@@ -7,6 +7,14 @@ To run the pipeline: type CREx_EEGPipeline in the command window.
 * **ERPlab toolbox** needs to be downloaded and on the matlab searchpath. ERP lab can be downloaded from: https://github.com/ucdavis/erplab/releases. ERP lab is used for the definition of Bin Descriptor Files (BDF) to define event codes.
 
 To run the pipeline type the following in the command window: ```CREx_EEGPipeline() ```
+The main script calls the following functions:
+- ```Àdd_EventList()``` to add EventList to current EEG structure using ERPLAB binlister() function.
+- ```pop_resample()``` EEGLAB function to resample data, which uses resample() function from Matlab's Signal Processing Toolbox
+- ```removeTrend()``` PrepPipeline function to remove trend in the data using either a highpass filter or linear detrending. This pipeline uses a highpass filter by default.
+- ```showSpectrum()```PrepPipeline function to plot channel spectra.
+- ```removeLineNoise()```PrepPipeline function that applies the Cleanline algorithm to correct line noise.
+- ```pop_clean_rawdata()```EEGLAB function from the *clean_rawdata* plugin.
+- ```pop_eegfiltnew()```EEGLAB function that applies EEGLAB's default *Hamming windowed sinc FIR* filter. 
 
 The components of the pipeline are summarized in the following workflow diagram.
 
