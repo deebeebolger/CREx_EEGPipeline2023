@@ -5,6 +5,8 @@
 * **PREP pipeline** downloaded and on the matlab search path. Download the PREP pipeline from https://vislab.github.io/EEG-Clean-Tools/
 * **ERPlab toolbox** needs to be downloaded and on the matlab searchpath. ERP lab can be downloaded from: https://github.com/ucdavis/erplab/releases. ERP lab is used for the definition of Bin Descriptor Files (BDF) to define event codes.
 
+:exclamation:  Remember to make sure that these toolboxes are on the Matlab path so that Matlab can find the respective functions.
+
 To run the pipeline type the following in the command window: ```CREx_EEGPipeline() ```
 The main script calls the following functions:
 - ```Àdd_EventList()``` to add EventList to current EEG structure using ERPLAB binlister() function.
