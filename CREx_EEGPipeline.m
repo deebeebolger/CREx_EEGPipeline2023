@@ -137,7 +137,7 @@ for fcount = 1:length(string(filename))
         EEG = pop_reref(EEG, [], 'exclude', norefindx);
     else
         refchans = cell2mat(eval(UserParam.reference.refchannels));
-        EEG = pop_reref(EEG, refchans, 'keepref', 'on');
+        EEG = pop_reref(EEG, refchans, 'keepref', 'on');                          % Keeping the original reference channels. 
     end
 
     saveFname_ref = strcat(EEG.setname,'-ref1');
@@ -158,7 +158,7 @@ for fcount = 1:length(string(filename))
     %     'WindowCriterionTolerances', [-Inf 7] ,'fusechanrej',str2double(UserParam.cleancriteria.fusechanrej));
 
     noisyChannelsIndx = find([EEG.etc.clean_channel_mask == 0]);
-    noisySamplesIndx = find([EEG.etc.clean_sample_mask == 1]);
+    noisySamplesIndx  = find([EEG.etc.clean_sample_mask == 1]);
     timeOld = OldEEG.times;
     EEG.etc.rejected_samples_time = timeOld(noisySamplesIndx);
 
@@ -168,12 +168,16 @@ for fcount = 1:length(string(filename))
     EEG = pop_saveset( EEG, 'filename',saveFname_clean, 'filepath',savepath);
 
     %% Recompute the average reference, interpolaing the bad electrode and removing them.
-
-    norefindx1 = find(~ismember({EEG.chanlocs.type}, 'EEG'));   % Only include the scalp elements in the
-    EEG = pop_reref(EEG, [], 'exclude', norefindx1);                     % do not interpolate here. Interpolate after ICA rejection.
-
-    saveFname_ref2 = strcat(saveFname_clean,'-reref');
-    EEG                      = pop_saveset( EEG, 'filename',saveFname_ref2, 'filepath',savepath);
+    
+    if strcmp(UserParam.reference.type, 'average')
+        norefindx1 = find(~ismember({EEG.chanlocs.type}, 'EEG'));   % Only include the scalp elements in the
+        EEG = pop_reref(EEG, [], 'exclude', norefindx1);                     % do not interpolate here. Interpolate after ICA rejection.
+    
+        saveFname_ref2 = strcat(saveFname_clean,'-reref');
+        EEG                      = pop_saveset( EEG, 'filename',saveFname_ref2, 'filepath',savepath);
+    else
+        fprintf('No need to recalculate the reference as the %s has already been applied. \n', UserParam.reference.type);
+    end 
 
     %% Carry out filtering: high-pass (if defined).
     %    The data set will be highpass filtered at 1Hz to facilitate ICA.
