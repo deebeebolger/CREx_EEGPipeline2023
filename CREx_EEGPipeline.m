@@ -170,9 +170,9 @@ for fcount = 1:length(string(filename))
 
     norefindx = find(~ismember({EEG.chanlocs.type}, 'EEG'));   % Only include the scalp elements in the
 
-    if strcmp(UserParam.reference.type, 'average')
+    if strcmp(UserParam.reference.type, 'average') && isempty(UserParam.reference.refchannels)
         EEG = pop_reref(EEG, [], 'exclude', norefindx);
-    else
+    elseif strcmp(UserParam.reference.type, 'linked-mastoids')
         refchans = cell2mat(eval(UserParam.reference.refchannels));
         EEG = pop_reref(EEG, refchans, 'keepref', 'on');                          % Keeping the original reference channels. 
     end
@@ -211,6 +211,8 @@ for fcount = 1:length(string(filename))
         saveFname_ref2 = strcat(saveFname_clean,'-reref');
         EEG = pop_saveset( EEG, 'filename',saveFname_ref2, 'filepath',savepathCurrent);
     else
+        
+        saveFname_ref2 = saveFname_clean;
         fprintf('No need to recalculate the reference as the %s has already been applied. \n', UserParam.reference.type);
     end 
 
@@ -279,6 +281,7 @@ for fcount = 1:length(string(filename))
         else
             fprintf('Reference type applied is %s.\nNo need to remove the channels. ', UserParam.reference.type)  % Question here of whether to include the mastoid reference channels in ICA.
             find(ismember({EEG_filterLP.chanlocs.type}, 'EEG' ));   % Find the number of scalp channels.
+            iseeg = find(ismember({EEG_filterLP.chanlocs.type}, 'EEG' ));  
         end
 
         icaType = UserParam.postprocess.icaType;
