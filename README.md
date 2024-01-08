@@ -24,3 +24,5 @@ The components of the pipeline are summarized in the following workflow diagram.
 
 ![EEG processing pipeline workflow](Pipeline_figure.png "EEG Processing workflow diagram.")
 
+
+
