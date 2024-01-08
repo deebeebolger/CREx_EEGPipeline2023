@@ -14,13 +14,12 @@ function CREx_EEGPipeline()
 [parentdir, childdir, ext] = fileparts(filepath);
 main_dir = fileparts(parentdir);
 
-if ~exist(dir(main_dir), 'ProcessedData')
+%% Create ProcessedData folder if one does not exist.
+
+if ~exist(fullfile(main_dir, 'ProcessedData'))
     fprintf("Creating a ProcessedData folder...\n")
     status = mkdir(fullfile(main_dir, 'ProcessedData'));
 end
-
-%% Create ProcessedData folder if one does not exist.
-
 savepath      = fullfile(main_dir, 'ProcessedData');
 
 %% Load in the main parameters file.
@@ -54,6 +53,12 @@ for fcount = 1:length(string(filename))
     fname_split = split(currfname, '.');
     EEG.setname = fname_split{1};
 
+    if ~exist(fullfile(savepath, fname_split{1,1}))
+        status = mkdir(fullfile(savepath, fname_split{1,1}));
+    end
+
+    savepathCurrent = fullfile(savepath, fname_split{1,1});
+
     %% Add the title of the current dataset to the parameters table.
 
     addSujInfo = {{'Participant'}, {'Title'}, {EEG.setname}; {'Participant'}, {'File'}, {EEG.filename}};
@@ -63,7 +68,7 @@ for fcount = 1:length(string(filename))
 
     params = [];                                                                                                  %Initialize the structure.
     EEG.data = double(EEG.data);                                                                    % Set eeg data to double precision.
-    UserParam = make_parameters_json(PIn, params, main_dir, EEG);         % Call of function to establish the parameters and create a json file with the parameters. It saves a json file of the user parameters.
+    UserParam = make_parameters_json(PIn, params, savepathCurrent, EEG);         % Call of function to establish the parameters and create a json file with the parameters. It saves a json file of the user parameters.
 
     %% Define scalp, external and auxiliary channels. Define channels to remove.
 
@@ -104,7 +109,7 @@ for fcount = 1:length(string(filename))
     trigs_forbidden = [];
     trigs_ignore      = [];
 
-    EEG = Add_EventList(EEG, BinDFile_fullpath, savepath, trigs_forbidden, trigs_ignore);
+    EEG = Add_EventList(EEG, BinDFile_fullpath, savepathCurrent, trigs_forbidden, trigs_ignore);
 
     %% Carry out downsampling if defined.
 
@@ -150,12 +155,10 @@ for fcount = 1:length(string(filename))
         fprintf('ProcessedData folder already exists. \n')
     end
 
-    savepath = fullfile(main_dir, 'ProcessedData');
     currfname_split = split(currfname, '.');
     saveFname_lnoise = strcat(currfname_split{1,1},'-linenoise');
     EEG.setname = saveFname_lnoise;
-    
-    EEG = pop_saveset( EEG, 'filename',saveFname_lnoise, 'filepath',savepath);
+    EEG = pop_saveset( EEG, 'filename',saveFname_lnoise, 'filepath',savepathCurrent);
 
      %% Show the frequency spectrum of current EEG version
 
@@ -175,7 +178,7 @@ for fcount = 1:length(string(filename))
 
     saveFname_ref = strcat(EEG.setname,'-ref1');
     EEG.setname = saveFname_ref;
-    EEG = pop_saveset( EEG, 'filename',saveFname_ref, 'filepath',savepath);
+    EEG = pop_saveset( EEG, 'filename',saveFname_ref, 'filepath',savepathCurrent);
 
     %% Apply the clean_rawdata plugin to detect bad electrodes. This requires computing the reference before-hand.
     OldEEG = EEG;
@@ -196,7 +199,7 @@ for fcount = 1:length(string(filename))
 
     saveFname_clean = strcat(EEG.setname,'-cleanraw');
     EEG.setname = saveFname_clean;
-    EEG = pop_saveset( EEG, 'filename',saveFname_clean, 'filepath',savepath);
+    EEG = pop_saveset( EEG, 'filename',saveFname_clean, 'filepath',savepathCurrent);
 
     %% Recompute the average reference, interpolaing the bad electrode and removing them.
     
@@ -205,7 +208,7 @@ for fcount = 1:length(string(filename))
         EEG = pop_reref(EEG, [], 'exclude', norefindx1);                     % do not interpolate here. Interpolate after ICA rejection.
     
         saveFname_ref2 = strcat(saveFname_clean,'-reref');
-        EEG                      = pop_saveset( EEG, 'filename',saveFname_ref2, 'filepath',savepath);
+        EEG = pop_saveset( EEG, 'filename',saveFname_ref2, 'filepath',savepathCurrent);
     else
         fprintf('No need to recalculate the reference as the %s has already been applied. \n', UserParam.reference.type);
     end 
@@ -224,7 +227,7 @@ for fcount = 1:length(string(filename))
         EEG.etc.postprocess.detrend_cutoff    = str2double(UserParam.postprocess.filter_highpass_cutoff);
 
         saveFname_filterHP = strcat(saveFname_ref2,'-filterHP');
-        EEG = pop_saveset( EEG, 'filename',saveFname_filterHP, 'filepath',savepath);
+        EEG = pop_saveset( EEG, 'filename',saveFname_filterHP, 'filepath',savepathCurrent);
 
     elseif ~isempty(UserParam.cleancriteria.Highpass)
         fprintf('Data already highpass filtered during data cleaning.\n')
@@ -235,7 +238,7 @@ for fcount = 1:length(string(filename))
         EEG.etc.postprocess.detrend_cutoff    = hpcut(1);
 
         saveFname_filterHP = strcat(saveFname_ref2,'-filterHP');
-        EEG = pop_saveset( EEG, 'filename',saveFname_filterHP, 'filepath',savepath);
+        EEG = pop_saveset( EEG, 'filename',saveFname_filterHP, 'filepath',savepathCurrent);
     end
 
     EEG_filterHP  = pop_eegfiltnew(EEG, 1, []);   % Apply agressive highpass filtering at 1Hz to facilitate ICA.
@@ -251,7 +254,7 @@ for fcount = 1:length(string(filename))
         EEG.etc.postprocess.LPfilter_cutoff     = str2double(UserParam.postprocess.filter_lowpass_cutoff);
 
         saveFname_filterLP = strcat(saveFname_filterHP,'-filterLP');
-        EEG = pop_saveset( EEG, 'filename',saveFname_filterLP, 'filepath',savepath);
+        EEG = pop_saveset( EEG, 'filename',saveFname_filterLP, 'filepath',savepathCurrent);
     else
         fprintf('No low pass filter applied. \n');
         EEG_filterLP = EEG_filterHP;
@@ -294,7 +297,7 @@ for fcount = 1:length(string(filename))
                 EEG.icawinv = inv(weights*sphere);
 
                 saveFname_ICA = strcat(saveFname_filterLP,'-ica');
-                EEG = pop_saveset( EEG, 'filename',saveFname_ICA, 'filepath',savepath);
+                EEG = pop_saveset( EEG, 'filename',saveFname_ICA, 'filepath',savepathCurrent);
 
                 % Use the ICLabel plugin to automatically identify component corresponding to artifacts.
                 [EEG, icOut]   = pop_iclabel(EEG, 'default');
@@ -304,14 +307,13 @@ for fcount = 1:length(string(filename))
                 ic2Rej = find(EEG.reject.gcompreject);        % Reject component/s
 
                 saveFname_icaRej = strcat(saveFname_ICA,'-icarej');
-                EEG = pop_saveset( EEG, 'filename',saveFname_icaRej, 'filepath',savepath);
+                EEG = pop_saveset( EEG, 'filename',saveFname_icaRej, 'filepath',savepathCurrent);
 
             case 'amica'
                 fprintf('Carry out Independent Components Analysis (ICA) by applying the %s algorithm', UserParam.postprocess.icaType)
                 % to be continued...
 
         end % end of switch.
-
     end % if doICA loop.
 
     %% Carry out interpolation: interpolate the bad channels rejected during data cleaning.
@@ -320,26 +322,17 @@ for fcount = 1:length(string(filename))
     EEG = pop_interp(EEG, chansPreclean, UserParam.interpolation.type);
 
     saveFname_ssInterp = strcat(saveFname_icaRej,'-ssinterp');
-    EEG = pop_saveset( EEG, 'filename',saveFname_ssInterp, 'filepath',savepath);
+    EEG = pop_saveset( EEG, 'filename',saveFname_ssInterp, 'filepath',savepathCurrent);
 
     %% Segment the continuous data.
 
-    poststim = [-1000 800];
-    prestim  = [-200 0];
+    poststim = [str2double(UserParam.segmentation.limitLow) str2double(UserParam.segmentation.limitHigh)];
+    prestim  = [str2double(UserParam.segmentation.baselineLow) str2double(UserParam.segmentation.baselineHigh)];
     EEG_epoched = pop_epochbin( EEG , poststim,  prestim);
     namefig = EEG_epoched.setname;
     pop_plotepoch4erp(EEG_epoched, namefig)
     
     save_fname = strcat(EEG_epoched.setname,'_ToneLDT_1st_epoched');
-    EEG = pop_saveset( EEG_epoched, 'filename',save_fname, 'filepath',savepath);
+    EEG = pop_saveset( EEG_epoched, 'filename',save_fname, 'filepath',savepathCurrent);
 
 end
-
-
-
-
-
-
-
-
-
