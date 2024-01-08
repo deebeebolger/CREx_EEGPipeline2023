@@ -30,7 +30,8 @@ opts = setvartype(opts, 'Value', 'string');
 PIn = readtable(param_path, opts);          % Load in the parameters in table form.
 
 %% Select the Bin Descriptor File to use when creating the EventLists.
-
+title_str = 'Select the Bin Descriptor File (.txt) to use when adding EventList.';
+if ~ispc; menu(title_str,'OK'); end % Run this if linux or mac operating system.
 [fileBDF, pathBDF] = uigetfile('*.txt','Select the Bin Descriptor File (.txt) to use when adding EventList.');
 BinDFile_fullpath   = fullfile(pathBDF, fileBDF);
 
