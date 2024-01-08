@@ -7,7 +7,7 @@
 
 :exclamation:  Remember to make sure that these toolboxes are on the Matlab path so that Matlab can find the respective functions.
 
-To run the pipeline type the following in the command window: ```CREx_EEGPipeline() ```
+**To run the pipeline type the following in the command window:** ```CREx_EEGPipeline() ```
 The main script calls the following functions:
 - ```Àdd_EventList()``` to add EventList to current EEG structure using ERPLAB binlister() function.
 - ```pop_resample()``` EEGLAB function to resample data, which uses resample() function from Matlab's Signal Processing Toolbox
