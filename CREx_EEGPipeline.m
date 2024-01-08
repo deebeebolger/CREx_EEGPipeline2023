@@ -161,7 +161,7 @@ for fcount = 1:length(string(filename))
     EEG.setname = saveFname_lnoise;
     EEG = pop_saveset( EEG, 'filename',saveFname_lnoise, 'filepath',savepathCurrent);
 
-     %% Show the frequency spectrum of current EEG version
+    %% Show the frequency spectrum of current EEG version
 
     [frefs, pows, BadChans] = showSpectrum(EEG, string({EEG.chanlocs(1:scalpNum).labels}), 1:scalpNum, 1:scalpNum,...
         'Channel Spectra after linenoise correction', scalpNum/2);
@@ -174,7 +174,7 @@ for fcount = 1:length(string(filename))
         EEG = pop_reref(EEG, [], 'exclude', norefindx);
     elseif strcmp(UserParam.reference.type, 'linked-mastoids')
         refchans = cell2mat(eval(UserParam.reference.refchannels));
-        EEG = pop_reref(EEG, refchans, 'keepref', 'on');                          % Keeping the original reference channels. 
+        EEG = pop_reref(EEG, refchans, 'keepref', 'on');                          % Keeping the original reference channels.
     end
 
     saveFname_ref = strcat(EEG.setname,'-ref1');
@@ -203,18 +203,18 @@ for fcount = 1:length(string(filename))
     EEG = pop_saveset( EEG, 'filename',saveFname_clean, 'filepath',savepathCurrent);
 
     %% Recompute the average reference, interpolaing the bad electrode and removing them.
-    
+
     if strcmp(UserParam.reference.type, 'average')
         norefindx1 = find(~ismember({EEG.chanlocs.type}, 'EEG'));   % Only include the scalp elements in the
         EEG = pop_reref(EEG, [], 'exclude', norefindx1);                     % do not interpolate here. Interpolate after ICA rejection.
-    
+
         saveFname_ref2 = strcat(saveFname_clean,'-reref');
         EEG = pop_saveset( EEG, 'filename',saveFname_ref2, 'filepath',savepathCurrent);
     else
-        
+
         saveFname_ref2 = saveFname_clean;
         fprintf('No need to recalculate the reference as the %s has already been applied. \n', UserParam.reference.type);
-    end 
+    end
 
     %% Carry out filtering: high-pass (if defined).
     %    The data set will be highpass filtered at 1Hz to facilitate ICA.
@@ -281,7 +281,7 @@ for fcount = 1:length(string(filename))
         else
             fprintf('Reference type applied is %s.\nNo need to remove the channels. ', UserParam.reference.type)  % Question here of whether to include the mastoid reference channels in ICA.
             find(ismember({EEG_filterLP.chanlocs.type}, 'EEG' ));   % Find the number of scalp channels.
-            iseeg = find(ismember({EEG_filterLP.chanlocs.type}, 'EEG' ));  
+            iseeg = find(ismember({EEG_filterLP.chanlocs.type}, 'EEG' ));
         end
 
         icaType = UserParam.postprocess.icaType;
@@ -309,7 +309,10 @@ for fcount = 1:length(string(filename))
 
                 EEG = pop_icflag(EEG, icThreshold);
                 ic2Rej = find(EEG.reject.gcompreject);        % Reject component/s
+                plotICTopos(EEG, ic2Rej, icThreshold);
 
+
+                EEG = pop_subcomp(EEG,ic2Rej,1);
                 saveFname_icaRej = strcat(saveFname_ICA,'-icarej');
                 EEG = pop_saveset( EEG, 'filename',saveFname_icaRej, 'filepath',savepathCurrent);
 
@@ -334,9 +337,25 @@ for fcount = 1:length(string(filename))
     prestim  = [str2double(UserParam.segmentation.baselineLow) str2double(UserParam.segmentation.baselineHigh)];
     EEG_epoched = pop_epochbin( EEG , poststim,  prestim);
     namefig = EEG_epoched.setname;
-    pop_plotepoch4erp(EEG_epoched, namefig)
-    
-    save_fname = strcat(EEG_epoched.setname,'_ToneLDT_1st_epoched');
+    pop_plotepoch4erp(EEG_epoched, namefig);
+
+    save_fname = strcat(saveFname_ssInterp,'_ToneLDT_1st_epoched');
     EEG = pop_saveset( EEG_epoched, 'filename',save_fname, 'filepath',savepathCurrent);
 
 end
+end  % end of main function
+
+function plotICTopos(EEG, icrej, ICThresh)
+
+    icClass = string(EEG.etc.ic_classification.ICLabel.classes);
+    icIndx = find(ICThresh(:,1));
+    
+    pop_topoplot(EEG, 0)
+    figure;
+    for counter = 1:length(icrej)
+        subplot(1, length(icrej), counter);
+        topoplot(EEG.icawinv(:, icrej(counter)), EEG.chanlocs, 'electrodes', 'on');
+        title([icClass{icIndx}, '-related Components', string(icrej(counter))]);
+    end
+
+end  % end of plotICTopos
